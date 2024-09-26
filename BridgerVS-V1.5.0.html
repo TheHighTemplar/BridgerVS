@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>BridgerEditor V1.0.0</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            background-color: #000000;
+        }
+        #editor, #preview {
+            width: 50%;
+            padding: 10px;
+            box-sizing: border-box;
+            border-color: rgb(0,255,68);
+            background-color: #000;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #editor {
+            border-right: 1px solid rgb(0,255,68);
+        }
+        .editor-header {
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgb(0,255,68);
+            color: rgb(0,255,68);
+            font-size: 16px;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            font-family: monospace;
+            font-size: 16px;
+            border: 1px solid rgb(0, 255, 68);
+            background-color: #000;
+            color: rgb(0, 255, 68);
+            margin-bottom: 10px;
+            flex: 1;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            border: 1px solid rgb(0, 255, 68);
+            background-color: #000;
+            color: rgb(0, 255, 68);
+            margin-bottom: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: rgb(0,255,68);
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: rgb(0,255,68);
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-width: 1px;
+            border-style: solid;
+        }
+        .download {
+            border-radius: 4px;
+            transition: background-color 0.7s, color 0.7s;
+        }
+        .download:hover {
+            background-color: #000;
+            border-color: rgb(0,255,68);
+            color: rgb(0,255,68);
+        }
+        .download:active {
+            opacity: 0.7;
+        }
+        .downloads {
+            width: 75%;
+            border-radius: 4px;
+            display: inline;
+            transition: background-color 0.7s, color 0.7s;
+        }
+        .downloads:hover {
+            background-color: #000;
+            border-color: rgb(0,255,68);
+            color: rgb(0,255,68);
+        }
+        .downloads:active {
+            opacity: 0.7;
+        }
+        select {
+            margin-left: 4%;
+            padding: 10px;
+            background-color: rgb(0, 255, 68);
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            width: 20%;
+        }
+        iframe {
+            width: 100%;
+            height: calc(100vh - 20px);
+            border: 1px solid rgb(0,255,68);
+            background-color: #000000;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #000;
+            border: 2px solid rgb(0,255,68);
+            min-height: 100px;
+            color: #fff;
+            display: none; /* Initially hidden */
+        }
+    </style>
+</head>
+<body>
+    <div id="editor">
+        <div class="editor-header">Custom File Name:</div>
+        <input type="text" id="fileNameInput" placeholder="Enter file name...">
+        <input type="file" id="fileInput" accept=".html">
+        <textarea id="codeInput" placeholder="Welcome to BridgerEditor-BE1.0.0, Type your code here..."></textarea>
+        
+        <div>
+            <button class="download" id="importBtn">Import HTML</button>
+            <button class="download" id="saveBtn">Save</button>
+            <button class="downloads" id="downloadBtn">Download File</button>
+            <select id="fileExtension">
+                <option value="html">.html</option>
+                <option value="css">.css</option>
+                <option value="js">.js</option>
+                <option value="ucexe">.ucexe</option>
+                <option value="txt">.txt</option>
+            </select>
+        </div>
+        
+        <button class="download" id="resetAllBtn">Reset All</button>
+    </div>
+    <div id="preview">
+        <h1 style="color: rgb(0,255,68); font-family: 'Courier New', Courier, monospace; margin-left: 150px;">Preview Frame</h1>
+        <iframe id="previewFrame"></iframe>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const codeInput = document.getElementById('codeInput');
+        const previewFrameDoc = document.getElementById('previewFrame').contentWindow.document;
+        const fileNameInput = document.getElementById('fileNameInput');
+        const fileInput = document.getElementById('fileInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetAllBtn = document.getElementById('resetAllBtn');
+        const importBtn = document.getElementById('importBtn');
+        const fileExtension = document.getElementById('fileExtension');
+        const outputDiv = document.getElementById('output');
+
+        function saveContent() {
+            const htmlContent = codeInput.value;
+            localStorage.setItem('savedHTML', htmlContent);
+            alert('Content saved successfully!');
+        }
+
+        function loadSavedContent() {
+            const savedHTML = localStorage.getItem('savedHTML');
+            if (savedHTML) {
+                codeInput.value = savedHTML;
+                updatePreview(savedHTML);
+            }
+        }
+
+        function updatePreview(content) {
+            if (fileExtension.value === 'js') {
+                outputDiv.style.display = 'block'; // Show output area
+                previewFrameDoc.body.innerHTML = ''; // Clear the iframe
+                try {
+                    const result = eval(content);
+                    outputDiv.textContent = `Output: ${result}`;
+                } catch (error) {
+                    outputDiv.textContent = `Error: ${error.message}`;
+                }
+            } else {
+                outputDiv.style.display = 'none'; // Hide output area
+                previewFrameDoc.open();
+                previewFrameDoc.write(`
+                    <style>
+                        body {
+                            background-color: ${content.trim() ? '#ffffff' : '#000000'};
+                            color: ${content.trim() ? '#000000' : 'rgb(0,255,68)'};
+                        }
+                    </style>
+                    ${content}
+                `);
+                previewFrameDoc.close();
+            }
+        }
+
+        function togglePreview() {
+            const selectedExtension = fileExtension.value;
+            if (selectedExtension === 'js') {
+                document.getElementById('preview').style.display = 'flex'; // Ensure the preview area is visible
+                outputDiv.style.display = 'block'; // Show JS output
+            } else {
+                document.getElementById('preview').style.display = 'flex'; // Show HTML preview
+                outputDiv.style.display = 'none'; // Hide JS output
+            }
+        }
+
+        codeInput.addEventListener('input', () => {
+            const content = codeInput.value;
+            updatePreview(content);
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const content = event.target.result;
+                codeInput.value = content;
+                updatePreview(content);
+            };
+            reader.readAsText(file);
+        });
+
+        fileExtension.addEventListener('change', () => {
+            const selectedExtension = fileExtension.value;
+            downloadBtn.textContent = `Download ${selectedExtension.toUpperCase()}`;
+            togglePreview(); // Toggle preview visibility when extension changes
+            updatePreview(codeInput.value); // Update preview when extension changes
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const codeContent = codeInput.value;
+            const fileName = fileNameInput.value.trim() || 'download';
+            const extension = fileExtension.value;
+
+            if (!codeContent.trim()) {
+                alert("Sorry, but you cannot download a blank file. It must contain code or other content.");
+                return;
+            }
+
+            const blob = new Blob([codeContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${fileName}.${extension}`;
+
+            const fileExists = [...document.querySelectorAll('a[download]')]
+                .some(a => a.download === `${fileName}.${extension}`);
+
+            if (fileExists && !confirm(`A file named "${fileName}.${extension}" already exists. Do you want to overwrite it?`)) {
+                return;
+            }
+
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        resetAllBtn.addEventListener('click', () => {
+            const codeContent = codeInput.value;
+            if (codeContent.trim()) {
+                alert("Are you sure you want to reset all without saving (downloading) your work?");
+            }
+            codeInput.value = '';
+            updatePreview('');
+        });
+
+        importBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        saveBtn.addEventListener('click', saveContent);
+
+        updatePreview('');
+        togglePreview(); // Set initial visibility based on default selection
+        window.onload = loadSavedContent;
+    </script>
+<script>
+    const codeInput = document.getElementById('codeInput');
+    const previewFrameDoc = document.getElementById('previewFrame').contentWindow.document;
+    const fileNameInput = document.getElementById('fileNameInput');
+    const fileInput = document.getElementById('fileInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const resetAllBtn = document.getElementById('resetAllBtn');
+    const importBtn = document.getElementById('importBtn');
+    const fileExtension = document.getElementById('fileExtension');
+    const outputDiv = document.getElementById('output');
+    const previewContainer = document.getElementById('preview');
+
+    function saveContent() {
+        const htmlContent = codeInput.value;
+        localStorage.setItem('savedHTML', htmlContent);
+        alert('Content saved successfully!');
+    }
+
+    function loadSavedContent() {
+        const savedHTML = localStorage.getItem('savedHTML');
+        if (savedHTML) {
+            codeInput.value = savedHTML;
+            updatePreview(savedHTML);
+        }
+    }
+
+    function updatePreview(content) {
+        if (fileExtension.value === 'js') {
+            outputDiv.style.display = 'block'; // Show output area
+            previewContainer.style.display = 'none'; // Hide HTML preview
+            try {
+                const result = eval(content);
+                outputDiv.textContent = `Output: ${result}`;
+            } catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
+            }
+        } else {
+            outputDiv.style.display = 'none'; // Hide output area
+            previewContainer.style.display = 'flex'; // Show HTML preview
+            previewFrameDoc.open();
+            previewFrameDoc.write(`
+                <style>
+                    body {
+                        background-color: ${content.trim() ? '#ffffff' : '#000000'};
+                        color: ${content.trim() ? '#000000' : 'rgb(0,255,68)'};
+                    }
+                </style>
+                ${content}
+            `);
+            previewFrameDoc.close();
+        }
+    }
+
+    function togglePreview() {
+        const selectedExtension = fileExtension.value;
+        updatePreview(codeInput.value); // Update preview when extension changes
+    }
+
+    codeInput.addEventListener('input', () => {
+        const content = codeInput.value;
+        updatePreview(content);
+    });
+
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const content = event.target.result;
+            codeInput.value = content;
+            updatePreview(content);
+        };
+        reader.readAsText(file);
+    });
+
+    fileExtension.addEventListener('change', () => {
+        downloadBtn.textContent = `Download ${fileExtension.value.toUpperCase()}`;
+        togglePreview(); // Toggle preview visibility when extension changes
+    });
+
+    downloadBtn.addEventListener('click', () => {
+        const codeContent = codeInput.value;
+        const fileName = fileNameInput.value.trim() || 'download';
+        const extension = fileExtension.value;
+
+        if (!codeContent.trim()) {
+            alert("Sorry, but you cannot download a blank file. It must contain code or other content.");
+            return;
+        }
+
+        const blob = new Blob([codeContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fileName}.${extension}`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    resetAllBtn.addEventListener('click', () => {
+        const codeContent = codeInput.value;
+        if (codeContent.trim()) {
+            alert("Are you sure you want to reset all without saving (downloading) your work?");
+        }
+        codeInput.value = '';
+        updatePreview('');
+    });
+
+    importBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    saveBtn.addEventListener('click', saveContent);
+
+    updatePreview('');
+    window.onload = loadSavedContent;
+</script>
+
+</body>
+</html>
